@@ -65,11 +65,15 @@ import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.formatter.YAxisValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
+import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackSession;
+import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
 
 import org.orbisgis.sos.LeqStats;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -97,6 +101,7 @@ public class MeasurementActivity extends MainActivity implements
 
     public final static double MIN_SHOWN_DBA_VALUE = 20;
     public final static double MAX_SHOWN_DBA_VALUE = 120;
+    public final static double TOO_LOUD = 95;
 
     private static final int DEFAULT_MINIMAL_LEQ = 1;
     private static final int DEFAULT_DELETE_LEQ_ON_PAUSE = 0;
@@ -109,6 +114,7 @@ public class MeasurementActivity extends MainActivity implements
     private static final String HAS_MAXIMAL_MEASURE_TIME_SETTING = "settings_recording";
     private static final String MAXIMAL_MEASURE_TIME_SETTING = "settings_recording_duration";
     private static final int DEFAULT_MAXIMAL_MEASURE_TIME_SETTING = 10;
+    private SlackSession mSession;
 
     public int getRecordId() {
         return measurementService.getRecordId();
@@ -694,6 +700,12 @@ public class MeasurementActivity extends MainActivity implements
                             activity.measurementService.getFastLeqStats();
                     final TextView mTextView = (TextView) activity.findViewById(R.id.textView_value_SL_i);
                     formatdBA(leq, mTextView);
+
+                    // ToDo - send message to Slack
+                    if (leq > TOO_LOUD) {
+                        activity.sendMessageToAChannel(activity.mSession);
+                    }
+
                     if(activity.measurementService.getLeqAdded() != 0) {
                         // Stats are only available if the recording of previous leq are activated
                         final TextView valueMin = (TextView) activity.findViewById(R.id
@@ -777,6 +789,13 @@ public class MeasurementActivity extends MainActivity implements
             measurementService.getAudioProcess().setHannWindowOneSecond(false);
             measurementService.getAudioProcess().setHannWindowFast(true);
             initGuiState();
+
+            mSession = SlackSessionFactory.createWebSocketSlackSession("my-bot-auth-token");
+            try {
+                mSession.connect();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         public void onServiceDisconnected(ComponentName className) {
@@ -834,6 +853,18 @@ public class MeasurementActivity extends MainActivity implements
     protected void onDestroy() {
         super.onDestroy();
         doUnbindService();
+    }
+
+    /**
+     * This method shows how to send a message to a given channel (public channel, private group or direct message channel)
+     */
+    public void sendMessageToAChannel(SlackSession session)
+    {
+
+        //get a channel
+        SlackChannel channel = session.findChannelByName("achannel");
+
+        session.sendMessage(channel, "Hey there");
     }
 }
 

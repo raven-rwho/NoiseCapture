@@ -75,7 +75,7 @@ public class Start extends Activity {
 
     final Start myActivity = this;
 
-    thread=  new Thread(){
+    thread = new Thread(){
         @Override
         public void run(){
             try {
